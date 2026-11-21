@@ -1,0 +1,19 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="dot-logic"
+config/description="Map-side logic as data: named entities with inputs and outputs, relay, counter and timer entities, connections with delays, in the style converted Source maps carry."
+run/main_scene="res://examples/logic_selftest.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/dot_logic/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
