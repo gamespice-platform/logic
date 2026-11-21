@@ -12,8 +12,8 @@ The Source engine's way of wiring a map (names, inputs, outputs, delays) is smal
 ## Quick start
 
 ```gdscript
-var g := DotLogicGraph.new()
-g.config = cfg                                     # a DotLogicConfig
+var g := GSLogicGraph.new()
+g.config = cfg                                     # a GSLogicConfig
 var r := g.load_document({
     "entities": [
         {"name": "boot", "class": "auto"},
@@ -51,7 +51,7 @@ g.update(delta)                                    # in _physics_process: delaye
 
 ## Settings
 
-Every number is a field on `DotLogicConfig`. The values below are defaults, and the ranges are inspector slider limits, not enforced caps. Set the property from code or a config file to go beyond them; 0 means unlimited where it says so.
+Every number is a field on `GSLogicConfig`. The values below are defaults, and the ranges are inspector slider limits, not enforced caps. Set the property from code or a config file to go beyond them; 0 means unlimited where it says so.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
@@ -60,11 +60,11 @@ Every number is a field on `DotLogicConfig`. The values below are defaults, and 
 | `max_chain` | 1000 | Inputs one update may dispatch, which stops a zero-delay loop. 0 is unlimited. |
 | `max_entities` | 4096 | Entities in one document. 0 is unlimited. |
 
-Layers, weakest first: the defaults, `cfg/addon/dot_logic/*.yml`, the game's files, the operator's files, `DOT_LOGIC_*` environment variables, then `--logic-*` flags. A game that wants cvars binds the config with GameSpice Game's `DotGameConfigBinder` (`profile_kind = "logic"`).
+Layers, weakest first: the defaults, `cfg/addon/dot_logic/*.yml`, the game's files, the operator's files, `DOT_LOGIC_*` environment variables, then `--logic-*` flags. A game that wants cvars binds the config with GameSpice Game's `GSGameConfigBinder` (`profile_kind = "logic"`).
 
 ## What it is not
 
-**Not Source entity classes.** GameSpice Map keeps the converted entities (`DotMapRelay`, `DotMapTrigger`, `DotMapCounter` and the rest of its `io` folder) and loads the map. This addon is the generic, scene-free graph underneath that style, for maps that are not converted.
+**Not Source entity classes.** GameSpice Map keeps the converted entities (`GSMapRelay`, `GSMapTrigger`, `GSMapCounter` and the rest of its `io` folder) and loads the map. This addon is the generic, scene-free graph underneath that style, for maps that are not converted.
 
 **Not community scripting.** Rules with conditions, variables and a cost budget, written by a server's community, are GameSpice Script's.
 

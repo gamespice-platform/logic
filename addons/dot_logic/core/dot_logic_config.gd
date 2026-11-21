@@ -1,5 +1,5 @@
-class_name DotLogicConfig
-extends DotConfig
+class_name GSLogicConfig
+extends GSConfig
 
 ## Every tunable of Logic. Layered like any config: defaults, `cfg/addon/dot_logic/*.yml`, the game tier, `DOT_LOGIC_*` environment, then `--logic-*` flags. A value of 0 on a limit means unlimited.
 
@@ -11,7 +11,7 @@ const ADDON := "dot-logic"
 @export_group("Limits")
 ## The most delayed inputs waiting at once; one past it is dropped and counted. 0 is unlimited.
 @export_range(0, 1000000, 1) var max_pending: int = 4096
-## The most inputs one [method DotLogicGraph.update] or one fire may dispatch before the graph stops with an error (a loop with no delay). 0 is unlimited, and then a loop hangs the caller.
+## The most inputs one [method GSLogicGraph.update] or one fire may dispatch before the graph stops with an error (a loop with no delay). 0 is unlimited, and then a loop hangs the caller.
 @export_range(0, 1000000, 1) var max_chain: int = 1000
 ## The most entities a document may declare. 0 is unlimited.
 @export_range(0, 1000000, 1) var max_entities: int = 4096
@@ -24,11 +24,11 @@ func cli_prefix() -> String:
 	return "--logic-"
 
 
-func validate() -> DotResult:
+func validate() -> GSResult:
 	for k in ["max_pending", "max_chain", "max_entities"]:
 		if int(get(k)) < 0:
-			return DotResult.fail(DotError.CODE_INVALID, "logic %s must be 0 (unlimited) or more, got %d" % [k, int(get(k))])
-	return DotResult.success(self)
+			return GSResult.fail(GSError.CODE_INVALID, "logic %s must be 0 (unlimited) or more, got %d" % [k, int(get(k))])
+	return GSResult.success(self)
 
 func describe() -> String:
 	return "logic %s pending<=%d chain<=%d entities<=%d" % ["on" if enabled else "disabled", max_pending, max_chain, max_entities]
@@ -37,7 +37,7 @@ func describe() -> String:
 ## The `logic` profile schema (the shape of GameSpice Profile's field()), read from the exports so it cannot drift; GameSpice Profile's profile_check finds it here.
 static func schema() -> Array:
 	var out: Array = []
-	var cfg := DotLogicConfig.new()
+	var cfg := GSLogicConfig.new()
 	for prop: Dictionary in cfg.get_property_list():
 		if not (int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) or not (int(prop["usage"]) & PROPERTY_USAGE_EDITOR):
 			continue
@@ -67,9 +67,9 @@ static func profile_schemas() -> Dictionary:
 
 
 ## Defaults, then `cfg/addon/dot_logic/*.yml` and the game tier, then environment and command line.
-static func from_files() -> DotResult:
-	var cfg := DotLogicConfig.new()
-	var files := DotAddonConfig.load_dir(ADDON)
+static func from_files() -> GSResult:
+	var cfg := GSLogicConfig.new()
+	var files := GSAddonConfig.load_dir(ADDON)
 	if not files.ok:
 		return files
 	cfg.apply_dictionary(files.value as Dictionary, "yml")

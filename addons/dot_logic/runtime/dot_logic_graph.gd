@@ -1,7 +1,7 @@
-class_name DotLogicGraph
+class_name GSLogicGraph
 extends RefCounted
 
-## A graph of [DotLogicEntity] joined by connections, run on a clock the caller advances. Plain data in
+## A graph of [GSLogicEntity] joined by connections, run on a clock the caller advances. Plain data in
 ## (a Dictionary from JSON), plain events out; no scene tree, no Node, no wall clock, so a server and a
 ## test run the same graph the same way.
 ##
@@ -16,7 +16,7 @@ signal fired(entity: String, output: String)
 ## The graph stopped a run of inputs that did not end; `dispatched` is how many ran.
 signal overflow(dispatched: int)
 
-var config: DotLogicConfig = DotLogicConfig.new()
+var config: GSLogicConfig = GSLogicConfig.new()
 var time: float = 0.0
 ## Inputs dropped because max_pending was reached.
 var dropped: int = 0
@@ -31,15 +31,15 @@ var _timers: Array = []
 
 
 ## Validates and loads a document. Failure lists every problem; the graph keeps what it had.
-func load_document(doc: Variant) -> DotResult:
+func load_document(doc: Variant) -> GSResult:
 	var errs := PackedStringArray()
 	if not doc is Dictionary:
-		return DotResult.fail(DotError.CODE_PARSE, "a logic document must be an object")
+		return GSResult.fail(GSError.CODE_PARSE, "a logic document must be an object")
 	var d: Dictionary = doc
 	var ents: Dictionary = {}
 	var list: Variant = d.get("entities", [])
 	if not list is Array:
-		return DotResult.fail(DotError.CODE_INVALID, "entities must be a list")
+		return GSResult.fail(GSError.CODE_INVALID, "entities must be a list")
 	if config.max_entities > 0 and (list as Array).size() > config.max_entities:
 		errs.append("%d entities is over max_entities %d" % [(list as Array).size(), config.max_entities])
 	for e: Variant in list:
@@ -51,10 +51,10 @@ func load_document(doc: Variant) -> DotResult:
 		var k := str(ed.get("class", ""))
 		if ents.has(n):
 			errs.append("duplicate entity '%s'" % n)
-		elif not DotLogicEntity.KINDS.has(k):
+		elif not GSLogicEntity.KINDS.has(k):
 			errs.append("entity '%s' has unknown class '%s'" % [n, k])
 		else:
-			ents[n] = DotLogicEntity.make(n, k, ed)
+			ents[n] = GSLogicEntity.make(n, k, ed)
 	var links: Dictionary = {}
 	var conns: Variant = d.get("connections", [])
 	if not conns is Array:
@@ -83,22 +83,22 @@ func load_document(doc: Variant) -> DotResult:
 		(links[key] as Array).append({"to": to, "input": str(cd["input"]).to_lower(), "param": str(cd.get("param", "")),
 			"delay": delay, "once": bool(cd.get("once", false)), "used": false})
 	if not errs.is_empty():
-		return DotResult.fail(DotError.CODE_INVALID, "\n".join(errs))
+		return GSResult.fail(GSError.CODE_INVALID, "\n".join(errs))
 	_entities = ents
 	_timers.clear()
 	for n: String in ents:
-		if (ents[n] as DotLogicEntity).kind == "timer":
+		if (ents[n] as GSLogicEntity).kind == "timer":
 			_timers.append(ents[n])
 	_links = links
 	_pending.clear()
 	time = 0.0
 	dropped = 0
 	errors.clear()
-	return DotResult.success(ents.size())
+	return GSResult.success(ents.size())
 
 
-func entity(n: String) -> DotLogicEntity:
-	return _entities.get(n) as DotLogicEntity
+func entity(n: String) -> GSLogicEntity:
+	return _entities.get(n) as GSLogicEntity
 
 
 func pending() -> int:
@@ -119,7 +119,7 @@ func entity_count() -> int:
 func snapshot() -> Dictionary:
 	var ents := {}
 	for n: String in _entities:
-		var e: DotLogicEntity = _entities[n]
+		var e: GSLogicEntity = _entities[n]
 		ents[n] = {"enabled": e.enabled, "value": e.value, "other": e.other, "spent": e.spent, "elapsed": e.elapsed}
 	var used: Array = []
 	for key: String in _links:
@@ -135,9 +135,9 @@ func snapshot() -> Dictionary:
 
 ## Puts a [method snapshot] back onto the loaded document. Entities the document lacks are ignored and counted
 ## in the result value; a malformed snapshot fails and changes nothing.
-func restore(snap: Dictionary) -> DotResult:
+func restore(snap: Dictionary) -> GSResult:
 	if not snap.get("entities", {}) is Dictionary or not snap.get("used", []) is Array or not snap.get("pending", []) is Array:
-		return DotResult.fail(DotError.CODE_INVALID, "a snapshot needs entities, used and pending")
+		return GSResult.fail(GSError.CODE_INVALID, "a snapshot needs entities, used and pending")
 	var unknown := 0
 	var ents: Dictionary = snap.get("entities", {})
 	for n: Variant in ents:
@@ -170,13 +170,13 @@ func restore(snap: Dictionary) -> DotResult:
 				"param": str(q.get("param", "")), "activator": null, "source": str(q.get("source", ""))})
 		else:
 			unknown += 1
-	return DotResult.success(unknown)
+	return GSResult.success(unknown)
 
 
 ## Fires every `auto` entity's OnSpawn. Call once when the map is ready.
 func start() -> void:
 	for n: String in _entities:
-		var e: DotLogicEntity = _entities[n]
+		var e: GSLogicEntity = _entities[n]
 		if e.kind == "auto":
 			fire(e, "onspawn", null)
 	_drain()
@@ -201,7 +201,7 @@ func emit_output(entity_name: String, output: String, activator: Variant = null)
 
 
 ## Called by an entity: queues every connection of one of its outputs.
-func fire(e: DotLogicEntity, output: String, activator: Variant, override_param: String = "") -> void:
+func fire(e: GSLogicEntity, output: String, activator: Variant, override_param: String = "") -> void:
 	fired.emit(e.name, output)
 	var key := e.name + "." + output
 	if not _links.has(key):
@@ -230,7 +230,7 @@ func update(dt: float) -> void:
 	if not config.enabled or dt < 0.0:
 		return
 	time += dt
-	for t: DotLogicEntity in _timers:
+	for t: GSLogicEntity in _timers:
 		t.advance(self, dt)
 	_drain()
 

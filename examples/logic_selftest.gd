@@ -29,8 +29,8 @@ func _ready() -> void:
 	get_tree().quit(1 if _failed > 0 else 0)
 
 
-func _graph(doc: Dictionary) -> DotLogicGraph:
-	var g := DotLogicGraph.new()
+func _graph(doc: Dictionary) -> GSLogicGraph:
+	var g := GSLogicGraph.new()
 	var r := g.load_document(doc)
 	if not r.ok:
 		print("  load failed: ", r.error.message)
@@ -43,29 +43,29 @@ func _link(from: String, out: String, to: String, inp: String, extra: Dictionary
 	return d
 
 
-func _recorder(g: DotLogicGraph) -> Array:
+func _recorder(g: GSLogicGraph) -> Array:
 	var seen: Array = []
 	g.node_input.connect(func(e: String, i: String, p: String, _a: Variant) -> void: seen.append([e, i, p]))
 	return seen
 
 
 func _config() -> void:
-	var c := DotLogicConfig.new()
+	var c := GSLogicConfig.new()
 	_check(c.validate().ok and c.max_chain == 1000, "defaults validate")
 	c.max_pending = -1
 	_check(not c.validate().ok, "a negative limit is refused, 0 means unlimited")
-	var names: Array = DotLogicConfig.profile_schemas()["logic"]["schema"].map(func(f: Dictionary) -> Variant: return f["name"])
+	var names: Array = GSLogicConfig.profile_schemas()["logic"]["schema"].map(func(f: Dictionary) -> Variant: return f["name"])
 	_check(names.has("max_chain") and names.size() == c.config_keys().size(), "profile schema lists every key", str(names.size()))
 	var applied := c.apply_dictionary({"max_pending": 9, "enabled": false})
 	_check(applied.size() == 2 and c.max_pending == 9 and not c.enabled, "a dictionary layer sets values", str(applied))
 	_check(c.env_prefix() == "DOT_LOGIC_" and c.cli_prefix() == "--logic-", "env and command-line prefixes")
-	var r := DotLogicConfig.from_files()
-	_check(r.ok and (r.value as DotLogicConfig).describe().begins_with("logic"), "from_files returns a config")
+	var r := GSLogicConfig.from_files()
+	_check(r.ok and (r.value as GSLogicConfig).describe().begins_with("logic"), "from_files returns a config")
 	_sections += 1
 
 
 func _document() -> void:
-	var g := DotLogicGraph.new()
+	var g := GSLogicGraph.new()
 	_check(not g.load_document([]).ok, "a list is not a document")
 	var bad := g.load_document({"entities": [{"name": "a", "class": "nope"}, {"name": "a", "class": "relay"}, {"class": "relay"}],
 		"connections": [_link("a", "OnTrigger", "ghost", "Trigger"), _link("a", "", "a", "x"), _link("a", "o", "a", "i", {"delay": -1})]})

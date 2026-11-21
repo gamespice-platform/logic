@@ -3,7 +3,7 @@ extends Node
 
 
 func _ready() -> void:
-	var g := DotLogicGraph.new()
+	var g := GSLogicGraph.new()
 	var r := g.load_document({
 		"entities": [{"name": "button", "class": "node"}, {"name": "presses", "class": "counter", "max": 2}, {"name": "door", "class": "node"}],
 		"connections": [

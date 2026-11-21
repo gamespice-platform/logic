@@ -1,4 +1,4 @@
-class_name DotLogicEntity
+class_name GSLogicEntity
 extends RefCounted
 
 ## One named logic entity. Its kind decides which inputs it understands and which outputs it fires:
@@ -6,11 +6,11 @@ extends RefCounted
 ##   relay    inputs Trigger, Enable, Disable, Toggle, CancelPending     outputs OnTrigger   key once
 ##   counter  inputs Add, Subtract, SetValue, Reset, Enable, Disable      outputs OnHitMin, OnHitMax, OutValue   keys min, max, start
 ##   timer    inputs Enable, Disable, Toggle, ResetTimer                  outputs OnTimer   key interval (seconds)
-##   auto     no inputs                                                   outputs OnSpawn (fired by DotLogicGraph.start)
+##   auto     no inputs                                                   outputs OnSpawn (fired by GSLogicGraph.start)
 ##   branch   inputs SetValue, Test, Enable, Disable             outputs OnTrue, OnFalse   key start (0 or 1)
 ##   compare  inputs SetValue, SetCompareValue, Compare                   outputs OnLessThan, OnEqualTo, OnGreaterThan   keys start, compare_value
 ##   case     inputs InValue                                              outputs OnCase<key>, OnDefault   keys case<key> (the text that selects it)
-##   node     any input is handed to the game (DotLogicGraph.node_input) outputs the game fires with DotLogicGraph.emit_output
+##   node     any input is handed to the game (GSLogicGraph.node_input) outputs the game fires with GSLogicGraph.emit_output
 ##
 ## Input and output names are not case sensitive. An entity changes only its own state and asks the graph to
 ## fire outputs; the graph owns the clock and the queue.
@@ -28,8 +28,8 @@ var elapsed: float = 0.0
 var other: float = 0.0
 
 
-static func make(p_name: String, p_kind: String, p_keys: Dictionary) -> DotLogicEntity:
-	var e := DotLogicEntity.new()
+static func make(p_name: String, p_kind: String, p_keys: Dictionary) -> GSLogicEntity:
+	var e := GSLogicEntity.new()
 	e.name = p_name
 	e.kind = p_kind
 	e.keys = p_keys
@@ -44,7 +44,7 @@ func key_float(k: String, def: float) -> float:
 
 
 ## Applies an input. Returns false for an input this kind does not have.
-func receive(graph: DotLogicGraph, input: String, param: String, activator: Variant) -> bool:
+func receive(graph: GSLogicGraph, input: String, param: String, activator: Variant) -> bool:
 	match kind:
 		"relay": return _relay(graph, input, activator)
 		"counter": return _counter(graph, input, param, activator)
@@ -67,7 +67,7 @@ func _switch(input: String) -> bool:
 	return true
 
 
-func _relay(graph: DotLogicGraph, input: String, activator: Variant) -> bool:
+func _relay(graph: GSLogicGraph, input: String, activator: Variant) -> bool:
 	if _switch(input):
 		return true
 	match input:
@@ -82,7 +82,7 @@ func _relay(graph: DotLogicGraph, input: String, activator: Variant) -> bool:
 	return false
 
 
-func _counter(graph: DotLogicGraph, input: String, param: String, activator: Variant) -> bool:
+func _counter(graph: GSLogicGraph, input: String, param: String, activator: Variant) -> bool:
 	if _switch(input):
 		return true
 	var lo := key_float("min", 0.0)
@@ -116,7 +116,7 @@ func _timer(input: String) -> bool:
 	return false
 
 
-func _branch(graph: DotLogicGraph, input: String, param: String, activator: Variant) -> bool:
+func _branch(graph: GSLogicGraph, input: String, param: String, activator: Variant) -> bool:
 	if _switch(input):
 		return true
 	match input:
@@ -128,7 +128,7 @@ func _branch(graph: DotLogicGraph, input: String, param: String, activator: Vari
 	return true
 
 
-func _compare(graph: DotLogicGraph, input: String, param: String, activator: Variant) -> bool:
+func _compare(graph: GSLogicGraph, input: String, param: String, activator: Variant) -> bool:
 	match input:
 		"setvalue": value = param.to_float()
 		"setcomparevalue": other = param.to_float()
@@ -138,7 +138,7 @@ func _compare(graph: DotLogicGraph, input: String, param: String, activator: Var
 	return true
 
 
-func _case(graph: DotLogicGraph, input: String, param: String, activator: Variant) -> bool:
+func _case(graph: GSLogicGraph, input: String, param: String, activator: Variant) -> bool:
 	if input != "invalue":
 		return false
 	for k: String in keys:
@@ -150,7 +150,7 @@ func _case(graph: DotLogicGraph, input: String, param: String, activator: Varian
 
 
 ## Advances a timer; fires OnTimer once per interval elapsed, never more than the time that passed allows.
-func advance(graph: DotLogicGraph, dt: float) -> void:
+func advance(graph: GSLogicGraph, dt: float) -> void:
 	if kind != "timer" or not enabled:
 		return
 	var interval := key_float("interval", 1.0)
