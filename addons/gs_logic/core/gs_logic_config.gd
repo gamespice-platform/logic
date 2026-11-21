@@ -1,9 +1,9 @@
 class_name GSLogicConfig
 extends GSConfig
 
-## Every tunable of Logic. Layered like any config: defaults, `cfg/addon/dot_logic/*.yml`, the game tier, `DOT_LOGIC_*` environment, then `--logic-*` flags. A value of 0 on a limit means unlimited.
+## Every tunable of Logic. Layered like any config: defaults, `cfg/addon/gs_logic/*.yml`, the game tier, `GS_LOGIC_*` environment, then `--logic-*` flags. A value of 0 on a limit means unlimited.
 
-const ADDON := "dot-logic"
+const ADDON := "gs-logic"
 
 ## Master switch: off, a graph accepts no inputs and runs nothing.
 @export var enabled: bool = true
@@ -17,7 +17,7 @@ const ADDON := "dot-logic"
 @export_range(0, 1000000, 1) var max_entities: int = 4096
 
 func env_prefix() -> String:
-	return "DOT_LOGIC_"
+	return "GS_LOGIC_"
 
 
 func cli_prefix() -> String:
@@ -66,7 +66,7 @@ static func profile_schemas() -> Dictionary:
 	return {"logic": {"schema": schema(), "children": {}}}
 
 
-## Defaults, then `cfg/addon/dot_logic/*.yml` and the game tier, then environment and command line.
+## Defaults, then `cfg/addon/gs_logic/*.yml` and the game tier, then environment and command line.
 static func from_files() -> GSResult:
 	var cfg := GSLogicConfig.new()
 	var files := GSAddonConfig.load_dir(ADDON)

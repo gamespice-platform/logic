@@ -6,7 +6,7 @@ The Source engine's way of wiring a map (names, inputs, outputs, delays) is smal
 
 ## Install
 
-1. Copy `addons/dot_logic/` and `addons/dot_core/` into your project.
+1. Copy `addons/gs_logic/` and `addons/gs_core/` into your project.
 2. Enable GameSpice Logic in *Project > Project Settings > Plugins*.
 
 ## Quick start
@@ -60,7 +60,7 @@ Every number is a field on `GSLogicConfig`. The values below are defaults, and t
 | `max_chain` | 1000 | Inputs one update may dispatch, which stops a zero-delay loop. 0 is unlimited. |
 | `max_entities` | 4096 | Entities in one document. 0 is unlimited. |
 
-Layers, weakest first: the defaults, `cfg/addon/dot_logic/*.yml`, the game's files, the operator's files, `DOT_LOGIC_*` environment variables, then `--logic-*` flags. A game that wants cvars binds the config with GameSpice Game's `GSGameConfigBinder` (`profile_kind = "logic"`).
+Layers, weakest first: the defaults, `cfg/addon/gs_logic/*.yml`, the game's files, the operator's files, `GS_LOGIC_*` environment variables, then `--logic-*` flags. A game that wants cvars binds the config with GameSpice Game's `GSGameConfigBinder` (`profile_kind = "logic"`).
 
 ## What it is not
 

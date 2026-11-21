@@ -1,6 +1,6 @@
 extends Node
 
-## dot-logic's headless suite (res://examples/logic_selftest.tscn).
+## gs-logic's headless suite (res://examples/logic_selftest.tscn).
 ## Counts sections run to their last line as well as checks, because a script error
 ## aborts a section and not the run.
 
@@ -13,7 +13,7 @@ var _sections := 0
 
 
 func _ready() -> void:
-	print("dot-logic")
+	print("gs-logic")
 	_config()
 	_document()
 	_relay()
@@ -58,7 +58,7 @@ func _config() -> void:
 	_check(names.has("max_chain") and names.size() == c.config_keys().size(), "profile schema lists every key", str(names.size()))
 	var applied := c.apply_dictionary({"max_pending": 9, "enabled": false})
 	_check(applied.size() == 2 and c.max_pending == 9 and not c.enabled, "a dictionary layer sets values", str(applied))
-	_check(c.env_prefix() == "DOT_LOGIC_" and c.cli_prefix() == "--logic-", "env and command-line prefixes")
+	_check(c.env_prefix() == "GS_LOGIC_" and c.cli_prefix() == "--logic-", "env and command-line prefixes")
 	var r := GSLogicConfig.from_files()
 	_check(r.ok and (r.value as GSLogicConfig).describe().begins_with("logic"), "from_files returns a config")
 	_sections += 1
