@@ -1,6 +1,6 @@
 [![Logic - GameSpice addon](docs/banner.png)](https://moddingcommunity.com/a/146-gs-logic)
 
-Map-side logic as data, for Godot 4.7+. Named entities have inputs and outputs, and a list of connections says *when this entity's output fires, send that input to that entity, after a delay*. Relays, counters, timers and auto entities are built in, and anything else is a `node` that hands the input back to your game. Part of the [GameSpice](https://github.com/gamespice-platform) family. It needs only [GameSpice Core](https://github.com/gamespice-platform/core).
+Map-side logic as data, for Godot 4.7+. Named entities have inputs and outputs, and a list of connections says *when this entity's output fires, send that input to that entity, after a delay*. Relays, counters, timers, auto entities, branches, compares and cases are built in, and anything else is a `node` that hands the input back to your game. Part of the [GameSpice](https://github.com/gamespice-platform) family. It needs only [GameSpice Core](https://github.com/gamespice-platform/core).
 
 The Source engine's way of wiring a map (names, inputs, outputs, delays) is small, readable and what converted maps already carry. This addon is that model with no engine entities, no scenes and no clock of its own: you feed it time, and it tells you what to do.
 
@@ -34,6 +34,21 @@ g.input("relay", "Trigger", "", 0.0, player)       # from a button, a trigger vo
 g.update(delta)                                    # in _physics_process: delayed inputs come due
 ```
 
+## Entity kinds
+
+| Kind | Inputs | Outputs |
+| --- | --- | --- |
+| `relay` | Trigger, Enable, Disable, Toggle, CancelPending | OnTrigger (key `once`) |
+| `counter` | Add, Subtract, SetValue, Reset, Enable, Disable | OnHitMin, OnHitMax, OutValue (keys `min`, `max`, `start`) |
+| `timer` | Enable, Disable, Toggle, ResetTimer | OnTimer (key `interval`) |
+| `branch` | SetValue, Test, Enable, Disable | OnTrue, OnFalse |
+| `compare` | SetValue, SetCompareValue, Compare | OnLessThan, OnEqualTo, OnGreaterThan (key `compare_value`) |
+| `case` | InValue | OnCase<key>, OnDefault (keys `case1`, `case2`, ... hold the text each one matches) |
+| `auto` | none | OnSpawn |
+| `node` | anything, handed to the game | whatever the game fires with `emit_output()` |
+
+`snapshot()` and `restore()` carry the clock, every entity's state, spent `once` connections and the inputs still waiting, for saves and for handing a map over to a new server. Activators are the game's objects and are not saved.
+
 ## Settings
 
 Every number is a field on `DotLogicConfig`. The values below are defaults, and the ranges are inspector slider limits, not enforced caps. Set the property from code or a config file to go beyond them; 0 means unlimited where it says so.
@@ -64,7 +79,7 @@ godot --headless --path . --import
 godot --headless --path . res://examples/logic_selftest.tscn
 ```
 
-The self-test is offline and exits non-zero on any failure (6 sections, 42 checks plus the two summary checks).
+The self-test is offline and exits non-zero on any failure (8 sections, 53 checks plus the two summary checks).
 
 ## Status
 

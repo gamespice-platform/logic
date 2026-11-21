@@ -4,8 +4,8 @@ extends Node
 ## Counts sections run to their last line as well as checks, because a script error
 ## aborts a section and not the run.
 
-const EXPECTED_SECTIONS := 6
-const EXPECTED_CHECKS := 42
+const EXPECTED_SECTIONS := 8
+const EXPECTED_CHECKS := 53
 
 var _passed := 0
 var _failed := 0
@@ -20,6 +20,8 @@ func _ready() -> void:
 	_counter()
 	_timer_and_delay()
 	_limits()
+	_decision_kinds()
+	_save()
 	print("")
 	_check(_sections == EXPECTED_SECTIONS, "every section ran to its last line (%d of %d)" % [_sections, EXPECTED_SECTIONS])
 	_check(_passed + _failed == EXPECTED_CHECKS, "and the suite ran all %d of its checks (%d)" % [EXPECTED_CHECKS, _passed + _failed])
@@ -196,6 +198,60 @@ func _limits() -> void:
 	var unl := _graph(loop)
 	unl.config.max_chain = 0
 	_check(unl.config.max_chain == 0, "max_chain 0 is unlimited (not exercised: it would hang)")
+	_sections += 1
+
+
+func _decision_kinds() -> void:
+	var g := _graph({"entities": [{"name": "b", "class": "branch"}, {"name": "n", "class": "node"}],
+		"connections": [_link("b", "OnTrue", "n", "Yes"), _link("b", "OnFalse", "n", "No")]})
+	var seen := _recorder(g)
+	g.input("b", "Test")
+	g.input("b", "SetValue", "1")
+	g.input("b", "Test")
+	g.input("b", "SetValue", "0")
+	g.input("b", "Test")
+	_check(seen.map(func(x: Array) -> Variant: return x[1]) == ["no", "yes", "no"], "a branch sends OnTrue or OnFalse by its value", str(seen))
+	g.input("b", "Disable")
+	g.input("b", "Test")
+	_check(seen.size() == 3, "a disabled branch stays quiet")
+	var c := _graph({"entities": [{"name": "c", "class": "compare", "compare_value": 5}, {"name": "n", "class": "node"}],
+		"connections": [_link("c", "OnLessThan", "n", "Lt"), _link("c", "OnEqualTo", "n", "Eq"), _link("c", "OnGreaterThan", "n", "Gt")]})
+	var cs := _recorder(c)
+	for v in ["3", "5", "9"]:
+		c.input("c", "SetValue", v)
+		c.input("c", "Compare")
+	c.input("c", "SetCompareValue", "10")
+	c.input("c", "Compare")
+	_check(cs.map(func(x: Array) -> Variant: return x[1]) == ["lt", "eq", "gt", "lt"], "a compare reports less, equal, greater, and takes a new operand", str(cs))
+	var k := _graph({"entities": [{"name": "k", "class": "case", "case1": "red", "case2": "blue"}, {"name": "n", "class": "node"}],
+		"connections": [_link("k", "OnCase1", "n", "One"), _link("k", "OnCase2", "n", "Two"), _link("k", "OnDefault", "n", "Other")]})
+	var ks := _recorder(k)
+	for v in ["blue", "red", "green"]:
+		k.input("k", "InValue", v)
+	_check(ks.map(func(x: Array) -> Variant: return x[1]) == ["two", "one", "other"], "a case picks its output by text, with a default", str(ks))
+	_check(not k.input("ghost", "InValue") and k.entity_count() == 2 and k.entity_names().size() == 2, "unknown targets say so, and the entities can be listed")
+	_sections += 1
+
+
+func _save() -> void:
+	var doc := {"entities": [{"name": "r", "class": "relay", "once": true}, {"name": "ct", "class": "counter", "max": 10}, {"name": "n", "class": "node"}],
+		"connections": [_link("r", "OnTrigger", "n", "Go", {"delay": 2.0}), _link("r", "OnTrigger", "ct", "Add", {"once": true})]}
+	var g := _graph(doc)
+	g.input("r", "Trigger")
+	g.update(0.5)
+	var snap := g.snapshot()
+	var h := _graph(doc)
+	var seen := _recorder(h)
+	var r := h.restore(JSON.parse_string(JSON.stringify(snap)))
+	_check(r.ok and r.value == 0 and is_equal_approx(h.time, 0.5), "a snapshot restores through JSON, no ids unknown")
+	_check(h.entity("ct").value == 1.0 and h.entity("r").spent and h.pending() == 1, "state, spent flags and the waiting input come back")
+	h.update(1.0)
+	_check(seen.size() == 0, "a restored input is not early")
+	h.update(0.6)
+	_check(seen.size() == 1 and seen[0][1] == "go", "and fires when its time comes", str(seen))
+	h.input("r", "Trigger")
+	_check(h.entity("ct").value == 1.0, "a spent once connection stays spent")
+	_check(not h.restore({"entities": 3}).ok, "a malformed snapshot is refused")
 	_sections += 1
 
 

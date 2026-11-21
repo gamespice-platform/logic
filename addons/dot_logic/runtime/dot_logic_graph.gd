@@ -27,6 +27,7 @@ var _entities: Dictionary = {}
 var _links: Dictionary = {}
 var _pending: Array = []
 var _seq: int = 0
+var _timers: Array = []
 
 
 ## Validates and loads a document. Failure lists every problem; the graph keeps what it had.
@@ -84,6 +85,10 @@ func load_document(doc: Variant) -> DotResult:
 	if not errs.is_empty():
 		return DotResult.fail(DotError.CODE_INVALID, "\n".join(errs))
 	_entities = ents
+	_timers.clear()
+	for n: String in ents:
+		if (ents[n] as DotLogicEntity).kind == "timer":
+			_timers.append(ents[n])
 	_links = links
 	_pending.clear()
 	time = 0.0
@@ -98,6 +103,74 @@ func entity(n: String) -> DotLogicEntity:
 
 func pending() -> int:
 	return _pending.size()
+
+
+## Entity names in the loaded document, in no fixed order.
+func entity_names() -> PackedStringArray:
+	return PackedStringArray(_entities.keys())
+
+
+func entity_count() -> int:
+	return _entities.size()
+
+
+## What a save needs: the clock, each entity's state, which `once` connections are spent, and what waits.
+## Activators are not saved (they are the game's objects); a restored input runs with none.
+func snapshot() -> Dictionary:
+	var ents := {}
+	for n: String in _entities:
+		var e: DotLogicEntity = _entities[n]
+		ents[n] = {"enabled": e.enabled, "value": e.value, "other": e.other, "spent": e.spent, "elapsed": e.elapsed}
+	var used: Array = []
+	for key: String in _links:
+		var list: Array = _links[key]
+		for i in list.size():
+			if bool((list[i] as Dictionary)["used"]):
+				used.append([key, i])
+	var wait: Array = []
+	for p: Dictionary in _pending:
+		wait.append({"due": p["due"], "target": p["target"], "input": p["input"], "param": p["param"], "source": p["source"]})
+	return {"time": time, "entities": ents, "used": used, "pending": wait}
+
+
+## Puts a [method snapshot] back onto the loaded document. Entities the document lacks are ignored and counted
+## in the result value; a malformed snapshot fails and changes nothing.
+func restore(snap: Dictionary) -> DotResult:
+	if not snap.get("entities", {}) is Dictionary or not snap.get("used", []) is Array or not snap.get("pending", []) is Array:
+		return DotResult.fail(DotError.CODE_INVALID, "a snapshot needs entities, used and pending")
+	var unknown := 0
+	var ents: Dictionary = snap.get("entities", {})
+	for n: Variant in ents:
+		var e := entity(str(n))
+		if e == null or not ents[n] is Dictionary:
+			unknown += 1
+			continue
+		var d: Dictionary = ents[n]
+		e.enabled = bool(d.get("enabled", true))
+		e.value = float(d.get("value", 0.0))
+		e.other = float(d.get("other", 0.0))
+		e.spent = bool(d.get("spent", false))
+		e.elapsed = float(d.get("elapsed", 0.0))
+	for key: String in _links:
+		for link: Dictionary in _links[key]:
+			link["used"] = false
+	for u: Variant in snap.get("used", []):
+		if u is Array and (u as Array).size() == 2 and _links.has(str((u as Array)[0])):
+			var list: Array = _links[str((u as Array)[0])]
+			var i := int((u as Array)[1])
+			if i >= 0 and i < list.size():
+				(list[i] as Dictionary)["used"] = true
+	time = float(snap.get("time", 0.0))
+	_pending.clear()
+	for p: Variant in snap.get("pending", []):
+		if p is Dictionary and _entities.has(str((p as Dictionary).get("target", ""))):
+			var q: Dictionary = p
+			_seq += 1
+			_pending.append({"due": float(q.get("due", time)), "seq": _seq, "target": str(q["target"]), "input": str(q.get("input", "")),
+				"param": str(q.get("param", "")), "activator": null, "source": str(q.get("source", ""))})
+		else:
+			unknown += 1
+	return DotResult.success(unknown)
 
 
 ## Fires every `auto` entity's OnSpawn. Call once when the map is ready.
@@ -142,9 +215,14 @@ func fire(e: DotLogicEntity, output: String, activator: Variant, override_param:
 
 
 func cancel_pending(source: String) -> int:
-	var before := _pending.size()
-	_pending = _pending.filter(func(p: Dictionary) -> bool: return str(p["source"]) != source)
-	return before - _pending.size()
+	var removed := 0
+	var i := _pending.size() - 1
+	while i >= 0:
+		if str((_pending[i] as Dictionary)["source"]) == source:
+			_pending.remove_at(i)
+			removed += 1
+		i -= 1
+	return removed
 
 
 ## Moves the clock on, advances timers, and dispatches every input that has come due, in order.
@@ -152,8 +230,8 @@ func update(dt: float) -> void:
 	if not config.enabled or dt < 0.0:
 		return
 	time += dt
-	for n: String in _entities:
-		(_entities[n] as DotLogicEntity).advance(self, dt)
+	for t: DotLogicEntity in _timers:
+		t.advance(self, dt)
 	_drain()
 
 

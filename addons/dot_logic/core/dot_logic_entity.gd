@@ -7,12 +7,15 @@ extends RefCounted
 ##   counter  inputs Add, Subtract, SetValue, Reset, Enable, Disable      outputs OnHitMin, OnHitMax, OutValue   keys min, max, start
 ##   timer    inputs Enable, Disable, Toggle, ResetTimer                  outputs OnTimer   key interval (seconds)
 ##   auto     no inputs                                                   outputs OnSpawn (fired by DotLogicGraph.start)
+##   branch   inputs SetValue, Test, Enable, Disable             outputs OnTrue, OnFalse   key start (0 or 1)
+##   compare  inputs SetValue, SetCompareValue, Compare                   outputs OnLessThan, OnEqualTo, OnGreaterThan   keys start, compare_value
+##   case     inputs InValue                                              outputs OnCase<key>, OnDefault   keys case<key> (the text that selects it)
 ##   node     any input is handed to the game (DotLogicGraph.node_input) outputs the game fires with DotLogicGraph.emit_output
 ##
 ## Input and output names are not case sensitive. An entity changes only its own state and asks the graph to
 ## fire outputs; the graph owns the clock and the queue.
 
-const KINDS := ["relay", "counter", "timer", "auto", "node"]
+const KINDS := ["relay", "counter", "timer", "auto", "branch", "compare", "case", "node"]
 
 var name: String = ""
 var kind: String = "relay"
@@ -21,6 +24,8 @@ var enabled: bool = true
 var value: float = 0.0
 var spent: bool = false
 var elapsed: float = 0.0
+## The second operand of a compare entity.
+var other: float = 0.0
 
 
 static func make(p_name: String, p_kind: String, p_keys: Dictionary) -> DotLogicEntity:
@@ -29,7 +34,8 @@ static func make(p_name: String, p_kind: String, p_keys: Dictionary) -> DotLogic
 	e.kind = p_kind
 	e.keys = p_keys
 	e.enabled = bool(p_keys.get("enabled", true))
-	e.value = float(p_keys.get("start", 0.0)) if p_kind == "counter" else 0.0
+	e.value = float(p_keys.get("start", 0.0)) if p_kind in ["counter", "branch", "compare"] else 0.0
+	e.other = float(p_keys.get("compare_value", 0.0))
 	return e
 
 
@@ -43,6 +49,9 @@ func receive(graph: DotLogicGraph, input: String, param: String, activator: Vari
 		"relay": return _relay(graph, input, activator)
 		"counter": return _counter(graph, input, param, activator)
 		"timer": return _timer(input)
+		"branch": return _branch(graph, input, param, activator)
+		"compare": return _compare(graph, input, param, activator)
+		"case": return _case(graph, input, param, activator)
 		"node":
 			graph.node_input.emit(name, input, param, activator)
 			return true
@@ -105,6 +114,39 @@ func _timer(input: String) -> bool:
 		elapsed = 0.0
 		return true
 	return false
+
+
+func _branch(graph: DotLogicGraph, input: String, param: String, activator: Variant) -> bool:
+	if _switch(input):
+		return true
+	match input:
+		"setvalue": value = 1.0 if param.to_float() != 0.0 or param.to_lower() == "true" else 0.0
+		"test":
+			if enabled:
+				graph.fire(self, "ontrue" if value != 0.0 else "onfalse", activator)
+		_: return false
+	return true
+
+
+func _compare(graph: DotLogicGraph, input: String, param: String, activator: Variant) -> bool:
+	match input:
+		"setvalue": value = param.to_float()
+		"setcomparevalue": other = param.to_float()
+		"compare":
+			graph.fire(self, "onlessthan" if value < other else ("onequalto" if value == other else "ongreaterthan"), activator)
+		_: return false
+	return true
+
+
+func _case(graph: DotLogicGraph, input: String, param: String, activator: Variant) -> bool:
+	if input != "invalue":
+		return false
+	for k: String in keys:
+		if k.begins_with("case") and str(keys[k]) == param:
+			graph.fire(self, "on" + k.to_lower(), activator)
+			return true
+	graph.fire(self, "ondefault", activator)
+	return true
 
 
 ## Advances a timer; fires OnTimer once per interval elapsed, never more than the time that passed allows.
