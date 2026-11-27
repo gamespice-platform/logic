@@ -2,7 +2,9 @@
 
 Map-side logic as data, for Godot 4.7+. Named entities have inputs and outputs, and a list of connections says *when this entity's output fires, send that input to that entity, after a delay*. Relays, counters, timers, auto entities, branches, compares and cases are built in, and anything else is a `node` that hands the input back to your game. Part of the [GameSpice](https://github.com/gamespice-platform) family. It needs only [GameSpice Core](https://github.com/gamespice-platform/core).
 
-The Source engine's way of wiring a map (names, inputs, outputs, delays) is small, readable and what converted maps already carry. This addon is that model with no engine entities, no scenes and no clock of its own: you feed it time, and it tells you what to do.
+A [GameSpice](https://gamespice.net) addon under the MIT licence, built with Claude Code. Its headless suite is `examples/logic_selftest.tscn`. The games in [Zee's Games](https://zeesgames.com) run on live servers and are built on the GameSpice addons. This one is not in any of them yet.
+
+Wiring a map with names, inputs, outputs and delays is small and readable, and it is what converted maps already carry. This addon is that model with no engine entities, no scenes and no clock of its own: you feed it time, and it tells you what to do.
 
 ## Install
 
@@ -79,11 +81,13 @@ godot --headless --path . --import
 godot --headless --path . res://examples/logic_selftest.tscn
 ```
 
-The self-test is offline and exits non-zero on any failure (8 sections, 53 checks plus the two summary checks).
+The self-test is offline and exits non-zero on any failure.
 
-## Status
+## Used by
 
-Built and maintained with Claude Code. The test suites pass, but little of this has been in front of real players yet. Please report rough edges by opening an issue.
+No shipped game uses it yet; the example scene shows it.
+
+The whole collection is at [zeesgames.com](https://zeesgames.com).
 
 ## Licence
 
